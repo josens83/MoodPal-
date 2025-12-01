@@ -1,0 +1,96 @@
+{
+  "name": "MoodPal - AI 멘탈 헬스케어",
+  "short_name": "MoodPal",
+  "description": "마음이 힘들 때, 언제든 곁에 있는 AI 친구. 24시간 공감 대화, 명상 프로그램, CBT 도구까지.",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#FFFBF5",
+  "theme_color": "#8B5CF6",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "medical"],
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "기분 기록하기",
+      "short_name": "기분 기록",
+      "description": "지금 기분을 기록합니다",
+      "url": "/journal?action=checkin",
+      "icons": [{ "src": "/icons/shortcut-mood.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "AI와 대화하기",
+      "short_name": "대화",
+      "description": "AI 컴패니언과 대화합니다",
+      "url": "/chat",
+      "icons": [{ "src": "/icons/shortcut-chat.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "명상 시작하기",
+      "short_name": "명상",
+      "description": "명상 프로그램을 시작합니다",
+      "url": "/explore?category=sos",
+      "icons": [{ "src": "/icons/shortcut-meditation.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

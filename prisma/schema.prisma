@@ -1,0 +1,501 @@
+// MoodPal Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============= 사용자 관련 =============
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  password      String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 프로필
+  profile       UserProfile?
+
+  // 구독
+  subscription  Subscription?
+
+  // 관계
+  accounts      Account[]
+  sessions      Session[]
+  moodEntries   MoodEntry[]
+  conversations Conversation[]
+  journals      Journal[]
+  thoughtRecords ThoughtRecord[]
+  sleepEntries  SleepEntry[]
+  meditationSessions MeditationSession[]
+  therapySessions TherapySession[]
+  activitySchedules ActivitySchedule[]
+
+  // 컴패니언 설정
+  preferredCompanionId String @default("hana")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model UserProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 기본 정보
+  nickname        String?
+  birthYear       Int?
+  gender          String?
+  occupation      String?
+
+  // 목표 및 선호
+  goals           String[] // ['stress_relief', 'better_sleep', 'anxiety_management']
+  preferredActivities String[]
+  notificationEnabled Boolean @default(true)
+  checkInReminder String?  // 'morning', 'evening', 'both'
+
+  // 온보딩
+  onboardingCompleted Boolean @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============= 구독 관련 =============
+
+model Subscription {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan               String   @default("free") // 'free', 'premium', 'premium_plus'
+  status             String   @default("active") // 'active', 'cancelled', 'expired'
+
+  stripeCustomerId   String?
+  stripeSubscriptionId String?
+  stripePriceId      String?
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+// ============= 감정 관련 =============
+
+model MoodEntry {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 감정 상태
+  primaryMood   String   // 'happy', 'sad', 'angry', 'anxious', etc.
+  secondaryMood String?
+  intensity     Int      // 1-10
+  valence       Float    // -1 to 1
+  arousal       Int      // 1-10
+
+  // 컨텍스트
+  activities    String[] // ['work', 'exercise', 'social']
+  location      String?  // 'home', 'work', 'outside', 'commute'
+  socialContext String?  // 'alone', 'with_people', 'online'
+
+  // 신체 상태
+  bodyFeelings  String[]
+  sleepQuality  Int?     // 1-5
+  energyLevel   Int?     // 1-5
+
+  // 메모
+  note          String?  @db.Text
+
+  // AI 분석
+  aiInsights    Json?
+
+  createdAt     DateTime @default(now())
+}
+
+model Journal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 일기 내용 (암호화됨)
+  content       String   @db.Text
+  gratitudeList String[]
+
+  // 연관 감정
+  moodEntryId   String?
+
+  // AI 분석
+  aiSummary     String?
+  affirmation   String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ============= AI 대화 =============
+
+model Conversation {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 컴패니언
+  companionId   String   // 'hana', 'miru', 'bom'
+
+  // 세션 정보
+  topic         String?  // 'work_stress', 'relationships', etc.
+  startMood     Json?
+  endMood       Json?
+
+  // 세션 분석
+  sessionAnalysis Json?
+
+  // 위기 감지 여부
+  crisisDetected Boolean @default(false)
+
+  messages      Message[]
+
+  startedAt     DateTime @default(now())
+  endedAt       DateTime?
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role           String   // 'user', 'companion'
+  content        String   @db.Text
+
+  // 감정 분석
+  emotionAnalysis Json?
+
+  // 위기 감지
+  isCrisisMessage Boolean @default(false)
+
+  createdAt      DateTime @default(now())
+}
+
+// ============= CBT 도구 =============
+
+model ThoughtRecord {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 상황
+  situation          String   @db.Text
+
+  // 감정
+  emotions           Json     // [{emotion: 'anxious', intensity: 80}]
+
+  // 자동적 사고
+  automaticThought   String   @db.Text
+  thoughtBelief      Int      // 0-100
+
+  // 인지 왜곡 (AI 분석)
+  cognitiveDistortions String[]
+
+  // 대안적 사고
+  alternativeThought String?  @db.Text
+  newBelief          Int?     // 0-100
+
+  // 결과
+  newEmotions        Json?    // [{emotion: 'calm', intensity: 40}]
+
+  // AI 피드백
+  aiFeedback         String?  @db.Text
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ActivitySchedule {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 활동 정보
+  title           String
+  category        String   // 'physical', 'social', 'achievement', etc.
+  scheduledFor    DateTime
+  duration        Int      // 분
+  importance      String   // 'low', 'medium', 'high'
+
+  // 예상/실제
+  anticipatedMood Int?     // 1-10
+  moodBefore      Int?     // 1-10
+  moodAfter       Int?     // 1-10
+
+  // 완료 여부
+  completed       Boolean  @default(false)
+  completedAt     DateTime?
+  actualDuration  Int?
+  notes           String?
+
+  createdAt       DateTime @default(now())
+}
+
+// ============= 수면 관리 =============
+
+model SleepEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date            DateTime @db.Date
+
+  // 수면 시간
+  bedTime         DateTime
+  wakeTime        DateTime
+  sleepDuration   Int      // 분
+
+  // 품질
+  sleepQuality    Int      // 1-5
+  sleepLatency    Int?     // 분
+  nightAwakenings Int?
+
+  // 요인
+  caffeine        Boolean  @default(false)
+  alcohol         Boolean  @default(false)
+  screenTime      Int?     // 분
+  exercise        Boolean  @default(false)
+  stressLevel     Int?     // 1-5
+
+  // 꿈
+  dreamRecorded   Boolean  @default(false)
+  dreamMood       String?  // 'positive', 'neutral', 'negative', 'nightmare'
+  dreamNote       String?
+
+  // 기상 컨디션
+  morningMood     Int?     // 1-5
+  morningEnergy   Int?     // 1-5
+
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+// ============= 명상 =============
+
+model MeditationProgram {
+  id              String   @id @default(cuid())
+
+  title           String
+  description     String   @db.Text
+  thumbnail       String?
+
+  // 메타
+  category        String   // 'breathing', 'body_scan', 'sleep', etc.
+  duration        Int      // 분
+  difficulty      String   // 'beginner', 'intermediate', 'advanced'
+
+  // 콘텐츠
+  type            String   // 'audio', 'video', 'text_guided'
+  audioUrl        String?
+  instructor      String
+  script          String?  @db.Text
+
+  // 효과
+  targetEmotions  String[]
+  benefits        String[]
+
+  // 접근 권한
+  accessType      String   @default("premium") // 'free', 'premium'
+
+  // 통계
+  completionCount Int      @default(0)
+  avgRating       Float    @default(0)
+
+  sessions        MeditationSession[]
+
+  createdAt       DateTime @default(now())
+}
+
+model MeditationSession {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programId       String
+  program         MeditationProgram @relation(fields: [programId], references: [id])
+
+  // 세션 정보
+  completed       Boolean  @default(false)
+  completedDuration Int?   // 실제 들은 시간 (분)
+
+  // 피드백
+  rating          Int?     // 1-5
+  moodBefore      Int?     // 1-10
+  moodAfter       Int?     // 1-10
+  notes           String?
+
+  createdAt       DateTime @default(now())
+}
+
+// ============= 전문가 연결 =============
+
+model Therapist {
+  id              String   @id @default(cuid())
+
+  name            String
+  email           String   @unique
+  photo           String?
+
+  // 자격
+  credentials     String[]
+  specializations String[]
+
+  // 상담 정보
+  sessionTypes    String[] // 'video', 'voice', 'chat'
+  pricing         Json     // [{type: 'video', duration: 50, price: 80000}]
+
+  // 소개
+  bio             String   @db.Text
+  approach        String   @db.Text
+
+  // 평가
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+
+  // 상태
+  isActive        Boolean  @default(true)
+
+  sessions        TherapySession[]
+  availabilities  TherapistAvailability[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model TherapistAvailability {
+  id            String    @id @default(cuid())
+  therapistId   String
+  therapist     Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+
+  dayOfWeek     Int       // 0-6 (일-토)
+  startTime     String    // "09:00"
+  endTime       String    // "18:00"
+
+  createdAt     DateTime  @default(now())
+}
+
+model TherapySession {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  therapistId     String
+  therapist       Therapist @relation(fields: [therapistId], references: [id])
+
+  // 세션 정보
+  scheduledAt     DateTime
+  duration        Int       // 분
+  type            String    // 'video', 'voice', 'chat'
+  status          String    @default("scheduled") // 'scheduled', 'in_progress', 'completed', 'cancelled'
+
+  // 결제
+  price           Int
+  paymentStatus   String    @default("pending")
+  paymentIntentId String?
+
+  // 피드백
+  userRating      Int?
+  userFeedback    String?   @db.Text
+  therapistNotes  String?   @db.Text  // 암호화
+
+  // 후속
+  nextSessionRecommended Boolean @default(false)
+  homeworkAssigned String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ============= 분석/통계 =============
+
+model WeeklyReport {
+  id              String   @id @default(cuid())
+  userId          String
+
+  weekStart       DateTime
+  weekEnd         DateTime
+
+  // 통계
+  avgValence      Float?
+  avgArousal      Float?
+  dominantMoods   String[]
+  moodVariability Float?
+
+  // 패턴
+  bestDay         String?
+  challengingDay  String?
+  timePatterns    Json?
+
+  // 상관관계
+  correlations    Json?
+
+  // AI 인사이트
+  aiSummary       String?  @db.Text
+  weeklyGoal      String?
+  celebratePoints String[]
+
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, weekStart])
+}
+
+// ============= 표준화된 평가 =============
+
+model Assessment {
+  id              String   @id @default(cuid())
+  userId          String
+
+  type            String   // 'PHQ-9', 'GAD-7', 'PSS-10', 'PSQI'
+  responses       Json
+  score           Int
+  severity        String   // 'minimal', 'mild', 'moderate', 'severe'
+
+  createdAt       DateTime @default(now())
+}
