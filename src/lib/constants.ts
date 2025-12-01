@@ -189,6 +189,14 @@ export const COGNITIVE_DISTORTIONS = {
   },
 };
 
+// 인지 왜곡 배열 (UI용)
+export const COGNITIVE_DISTORTIONS_LIST = Object.entries(COGNITIVE_DISTORTIONS).map(
+  ([id, data]) => ({
+    id,
+    ...data,
+  })
+);
+
 // 명상 프로그램 (샘플)
 export const MEDITATION_PROGRAMS: MindfulnessProgram[] = [
   // SOS (무료)

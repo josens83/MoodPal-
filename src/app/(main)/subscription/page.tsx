@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Check,
   Crown,
@@ -12,6 +13,7 @@ import {
   Brain,
   Users,
   ChevronLeft,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,12 +24,14 @@ import { SUBSCRIPTION_PLANS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export default function SubscriptionPage() {
+  const router = useRouter();
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">(
     "yearly"
   );
   const [selectedPlan, setSelectedPlan] = useState<"premium" | "premium_plus">(
     "premium"
   );
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useUserStore();
 
   const premiumPrice =
@@ -86,8 +90,50 @@ export default function SubscriptionPage() {
   ];
 
   const handleSubscribe = async () => {
-    // TODO: Stripe 결제 연동
-    alert("결제 기능은 준비 중입니다.");
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 선택한 플랜에 따른 Price ID 결정
+      const priceIdMap = {
+        premium: {
+          monthly: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_MONTHLY_PRICE_ID,
+          yearly: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_YEARLY_PRICE_ID,
+        },
+        premium_plus: {
+          monthly: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PLUS_MONTHLY_PRICE_ID,
+          yearly: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PLUS_YEARLY_PRICE_ID,
+        },
+      };
+
+      const priceId = priceIdMap[selectedPlan][billingPeriod];
+
+      const response = await fetch("/api/payment/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId,
+          plan: selectedPlan,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "결제 세션 생성에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      alert("결제 처리 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -303,8 +349,16 @@ export default function SubscriptionPage() {
             className="w-full"
             variant="gradient"
             onClick={handleSubscribe}
+            disabled={isLoading}
           >
-            {selectedPlan === "premium" ? "프리미엄" : "프리미엄+"} 시작하기
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                처리 중...
+              </>
+            ) : (
+              `${selectedPlan === "premium" ? "프리미엄" : "프리미엄+"} 시작하기`
+            )}
           </Button>
           <p className="text-xs text-center text-muted-foreground mt-3">
             언제든 취소 가능 · 7일 무료 체험
